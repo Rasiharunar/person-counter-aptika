@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Room Monitor - Send Only</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .video-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .video-container {
+            position: relative;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            background: #000;
+        }
+
+        #videoFeed {
+            width: 480px;
+            height: 360px;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .btn-record {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .record-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .record-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 15px;
+            margin: 8px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .api-section {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 25px;
+        }
+
+        .api-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .api-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .api-info p {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .api-info strong {
+            color: #333;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            #videoFeed {
+                width: 100%;
+                max-width: 480px;
+                height: auto;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Meeting Room Monitor</h1>
+            <p class="subtitle">Real-time person detection with data sending to Laravel</p>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <div class="video-container">
+                    <img id="videoFeed" src="" alt="Video Feed" style="display: none;">
+                    <div id="noVideo"
+                        style="width: 480px; height: 360px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 1.1rem;">
+                        Click "Start Camera" to begin detection
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-start" id="startBtn" onclick="startCamera()">📹 Start Camera</button>
+                    <button class="btn btn-stop" id="stopBtn" onclick="stopCamera()" disabled>⏹️ Stop Camera</button>
+                    <button class="btn btn-test" id="testBtn" onclick="testAPI()">🔍 Test API</button>
+                </div>
+
+                <div id="status"></div>
+            </div>
+
+            <div class="side-section">
+                <div class="record-section">
+                    <h3>📊 Send Data to Laravel</h3>
+                    <div class="form-group">
+                        <label for="eventName">Event Name:</label>
+                        <input type="text" id="eventName" placeholder="e.g., Morning Meeting" maxlength="100">
+                    </div>
+                    <button class="btn btn-record" id="recordBtn" onclick="recordData()">🚀 Send Data to
+                        Laravel</button>
+                </div>
+
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <div class="stat-number" id="personCount">0</div>
+                        <div class="stat-label">People Detected</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="status-indicator">🔴</div>
+                        <div class="stat-label">Camera Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-section">
+            <h3>🔗 Laravel API Information</h3>
+            <div class="api-info">
+                <p><strong>API Endpoint:</strong> http://withink.pro/api/recordings/smartroomlabvhx</p>
+                <p><strong>Function:</strong> Send person count data to Laravel backend</p>
+                <p><strong>Data Sent:</strong> Event name, person count, timestamp, device ID, and location</p>
+                <p><strong>Features:</strong> Send only - no data retrieval or deletion</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application state
+        let cameraActive = false;
+        let countUpdateInterval = null;
+        let currentPersonCount = 0;
+
+        // DOM elements
+        const videoFeed = document.getElementById( 'videoFeed' );
+        const noVideo = document.getElementById( 'noVideo' );
+        const statusDiv = document.getElementById( 'status' );
+        const personCountDiv = document.getElementById( 'personCount' );
+        const statusIndicator = document.getElementById( 'status-indicator' );
+        const eventNameInput = document.getElementById( 'eventName' );
+
+        // Button elements
+        const startBtn = document.getElementById( 'startBtn' );
+        const stopBtn = document.getElementById( 'stopBtn' );
+        const recordBtn = document.getElementById( 'recordBtn' );
+        const testBtn = document.getElementById( 'testBtn' );
+
+        /**
+         * Display status message with appropriate styling
+         */
+        function showStatus( message, type = 'info' ) {
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+
+            // Auto-hide success messages after 5 seconds
+            if ( type === 'success' ) {
+                setTimeout( () => {
+                    if ( statusDiv.className.includes( 'success' ) ) {
+                        statusDiv.innerHTML = '';
+                        statusDiv.className = '';
+                    }
+                }, 5000 );
+            }
+        }
+
+        /**
+         * Show loading status with spinner
+         */
+        function showLoading( message ) {
+            statusDiv.className = 'status loading';
+            statusDiv.innerHTML = `<span class="loading-spinner"></span>${message}`;
+        }
+
+        /**
+         * Update button states based on camera status
+         */
+        function updateButtonStates() {
+            startBtn.disabled = cameraActive;
+            stopBtn.disabled = !cameraActive;
+
+            if ( cameraActive ) {
+                statusIndicator.textContent = '🟢';
+            } else {
+                statusIndicator.textContent = '🔴';
+            }
+        }
+
+        /**
+         * Start the camera and detection system
+         */
+        async function startCamera() {
+            try {
+                showLoading( 'Starting camera...' );
+                startBtn.disabled = true;
+
+                const response = await fetch( '/start_camera', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                } );
+
+                const result = await response.json();
+
+                if ( result.status === 'success' || result.status === 'info' ) {
+                    cameraActive = true;
+
+                    // Show video feed
+                    videoFeed.src = '/video_feed?' + new Date().getTime();
+                    videoFeed.style.display = 'block';
+                    noVideo.style.display = 'none';
+
+                    // Start updating person count
+                    startCountUpdates();
+
+                    showStatus( '✅ Camera started successfully!', 'success' );
+                } else {
+                    throw new Error( result.message || 'Failed to start camera' );
+                }
+
+            } catch ( error ) {
+                console.error( 'Error starting camera:', error );
+                showStatus( `❌ Error starting camera: ${error.message}`, 'error' );
+                cameraActive = false;
+            } finally {
+                updateButtonStates();
+            }
+        }
+
+        /**
+         * Stop the camera and detection system
+         */
+        async function stopCamera() {
+            try {
+                showLoading( 'Stopping camera...' );
+                stopBtn.disabled = true;
+
+                const response = await fetch( '/stop_camera', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                } );
+
+                const result = await response.json();
+
+                if ( result.status === 'success' ) {
+                    cameraActive = false;
+
+                    // Hide video feed
+                    videoFeed.style.display = 'none';
+                    videoFeed.src = '';
+                    noVideo.style.display = 'flex';
+
+                    // Stop updating person count
+                    stopCountUpdates();
+
+                    // Reset person count
+                    currentPersonCount = 0;
+                    personCountDiv.textContent = '0';
+
+                    showStatus( '⏹️ Camera stopped successfully!', 'success' );
+                } else {
+                    throw new Error( result.message || 'Failed to stop camera' );
+                }
+
+            } catch ( error ) {
+                console.error( 'Error stopping camera:', error );
+                showStatus( `❌ Error stopping camera: ${error.message}`, 'error' );
+            } finally {
+                updateButtonStates();
+            }
+        }
+
+        /**
+         * Start periodic updates of person count
+         */
+        function startCountUpdates() {
+            if ( countUpdateInterval ) {
+                clearInterval( countUpdateInterval );
+            }
+
+            countUpdateInterval = setInterval( async () => {
+                if ( !cameraActive ) return;
+
+                try {
+                    const response = await fetch( '/get_count' );
+                    const result = await response.json();
+
+                    if ( result.count !== undefined ) {
+                        currentPersonCount = result.count;
+                        personCountDiv.textContent = currentPersonCount;
+                    }
+                } catch ( error ) {
+                    console.error( 'Error getting count:', error );
+                }
+            }, 1000 ); // Update every second
+        }
+
+        /**
+         * Stop periodic updates of person count
+         */
+        function stopCountUpdates() {
+            if ( countUpdateInterval ) {
+                clearInterval( countUpdateInterval );
+                countUpdateInterval = null;
+            }
+        }
+
+        /**
+         * Record current data to Laravel API
+         */
+        async function recordData() {
+            const eventName = document.getElementById( 'eventName' ).value.trim();
+            const statusDiv = document.getElementById( 'status' );
+
+            if ( !eventName ) {
+                statusDiv.innerText = 'Please enter event name.';
+                return;
+            }
+
+            statusDiv.innerText = 'Sending...';
+
+            try {
+                const response = await fetch( `/record_data?event_name=${encodeURIComponent(eventName)}` );
+                const result = await response.json();
+
+                if ( result.status === 'success' ) {
+                    statusDiv.innerText =
+                        `Success: Event "${result.data.event_name}" sent with count ${result.data.person_count}`;
+                } else {
+                    statusDiv.innerText = `Error: ${result.message}`;
+                }
+            } catch ( error ) {
+                statusDiv.innerText = `Fetch error: ${error.message}`;
+            }
+        }
+
+        /**
+         * Test Laravel API connection
+         */
+        async function testAPI() {
+            try {
+                showLoading( 'Testing API connection...' );
+                testBtn.disabled = true;
+
+                const response = await fetch( '/test_api' );
+                const result = await response.json();
+
+                if ( result.status === 'success' ) {
+                    showStatus( `✅ API test successful! Response code: ${result.response_code}`, 'success' );
+                } else {
+                    showStatus( `❌ API test failed: ${result.error || 'Unknown error'}`, 'error' );
+                }
+
+            } catch ( error ) {
+                console.error( 'Error testing API:', error );
+                showStatus( `❌ API test error: ${error.message}`, 'error' );
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+
+        /**
+         * Handle Enter key press in event name input
+         */
+        eventNameInput.addEventListener( 'keypress', function ( e ) {
+            if ( e.key === 'Enter' ) {
+                recordData();
+            }
+        } );
+
+        /**
+         * Handle video feed errors
+         */
+        videoFeed.addEventListener( 'error', function () {
+            console.error( 'Video feed error' );
+            if ( cameraActive ) {
+                showStatus( '❌ Video feed connection lost', 'error' );
+            }
+        } );
+
+        /**
+         * Handle video feed load
+         */
+        videoFeed.addEventListener( 'load', function () {
+            if ( cameraActive ) {
+                console.log( 'Video feed loaded successfully' );
+            }
+        } );
+
+        /**
+         * Handle page visibility changes
+         */
+        document.addEventListener( 'visibilitychange', function () {
+            if ( document.hidden ) {
+                // Page is hidden, consider pausing updates
+                console.log( 'Page hidden' );
+            } else {
+                // Page is visible again
+                console.log( 'Page visible' );
+                if ( cameraActive && !countUpdateInterval ) {
+                    startCountUpdates();
+                }
+            }
+        } );
+
+        /**
+         * Handle page unload
+         */
+        window.addEventListener( 'beforeunload', function () {
+            if ( cameraActive ) {
+                // Try to stop camera gracefully
+                navigator.sendBeacon( '/stop_camera', new FormData() );
+            }
+        } );
+
+        /**
+         * Initialize application
+         */
+        function initApp() {
+            console.log( 'Meeting Room Monitor initialized' );
+            updateButtonStates();
+
+            // Test initial API connection on load
+            setTimeout( () => {
+                testAPI();
+            }, 1000 );
+        }
+
+        // Initialize the application when DOM is loaded
+        if ( document.readyState === 'loading' ) {
+            document.addEventListener( 'DOMContentLoaded', initApp );
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+
+</html>
