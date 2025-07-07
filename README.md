@@ -1,2 +1,3 @@
-yang di run . run.py
-python run.py
+app4.py => logika running camera dan aplikasi python
+
+main.py => buat ngerun app4.py sampai bisa ke localhost yang nyambung ke tunneling cloudflare domain smartroom.withink.pro
