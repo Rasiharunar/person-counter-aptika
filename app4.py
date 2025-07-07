@@ -18,8 +18,8 @@ app = Flask(__name__)
 model = YOLO("yolo-weights/yolo11n.pt")  # pastikan file ini ada di folder project
 
 # Laravel API endpoint (device_code disisipkan di URL)
-LARAVEL_API_URL = "http://withink.pro/api/recordings/smartroom"
-LARAVEL_VIDEO_URL = "http://withink.pro/api/video-feed/smartroom"  # Endpoint untuk video feed
+LARAVEL_API_URL = "http://127.0.0.1:8000/api/recordings/smartroomfhx"
+LARAVEL_VIDEO_URL = "http://127.0.0.1:8000/api/video-feed/smartroomfhx"  # Endpoint untuk video feed
 
 # Global variables
 person_count = 0

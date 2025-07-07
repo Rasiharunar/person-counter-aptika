@@ -3,3 +3,6 @@ requests
 opencv-python
 ultralytics
 numpy
+Flask-Login
+Flask-SQLAlchemy
+Werkzeug
