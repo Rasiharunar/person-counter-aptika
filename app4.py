@@ -415,64 +415,68 @@ def generate_frames():
                        b'Content-Type: image/jpeg\r\n\r\n' + last_frame + b'\r\n')
             time.sleep(0.1)
             continue
-
 @app.route('/video_feed')
 def video_feed():
-    """Modified video feed that handles camera restarts"""
-    def generate_with_restart_handling():
-        max_retries = 5
-        retry_count = 0
-        
-        while retry_count < max_retries:
-            try:
-                if not camera_active:
-                    # Send placeholder frame when camera is not active
-                    placeholder_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                    cv2.putText(placeholder_frame, "Camera Not Active", (200, 240), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                    _, buffer = cv2.imencode('.jpg', placeholder_frame)
-                    yield (b'--frame\r\n'
-                           b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-                    time.sleep(1)  # Wait before checking again
-                    continue
-                
-                # Generate frames from active camera
-                frame_generated = False
-                for frame in generate_frames():
-                    frame_generated = True
-                    yield frame
-                
-                # If no frames were generated and camera is supposed to be active
-                if not frame_generated and camera_active:
-                    retry_count += 1
-                    print(f"No frames generated, retry {retry_count}/{max_retries}")
-                    time.sleep(0.5)
-                else:
-                    retry_count = 0  # Reset retry count on success
-                    
-            except Exception as e:
-                print(f"Error in video feed generator: {str(e)}")
-                retry_count += 1
-                
-                # Send error frame
-                error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                cv2.putText(error_frame, f"Error: {str(e)[:30]}", (50, 240), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                _, buffer = cv2.imencode('.jpg', error_frame)
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-                time.sleep(1)
-        
-        # Send final error frame if max retries reached
-        final_error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-        cv2.putText(final_error_frame, "Max retries reached", (180, 240), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        _, buffer = cv2.imencode('.jpg', final_error_frame)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-    
-    return Response(generate_with_restart_handling(),
+    return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# @app.route('/video_feed')
+# def video_feed():
+#     """Modified video feed that handles camera restarts"""
+#     def generate_with_restart_handling():
+#         max_retries = 5
+#         retry_count = 0
+        
+#         while retry_count < max_retries:
+#             try:
+#                 if not camera_active:
+#                     # Send placeholder frame when camera is not active
+#                     placeholder_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+#                     cv2.putText(placeholder_frame, "Camera Not Active", (200, 240), 
+#                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+#                     _, buffer = cv2.imencode('.jpg', placeholder_frame)
+#                     yield (b'--frame\r\n'
+#                            b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+#                     time.sleep(1)  # Wait before checking again
+#                     continue
+                
+#                 # Generate frames from active camera
+#                 frame_generated = False
+#                 for frame in generate_frames():
+#                     frame_generated = True
+#                     yield frame
+                
+#                 # If no frames were generated and camera is supposed to be active
+#                 if not frame_generated and camera_active:
+#                     retry_count += 1
+#                     print(f"No frames generated, retry {retry_count}/{max_retries}")
+#                     time.sleep(0.5)
+#                 else:
+#                     retry_count = 0  # Reset retry count on success
+                    
+#             except Exception as e:
+#                 print(f"Error in video feed generator: {str(e)}")
+#                 retry_count += 1
+                
+#                 # Send error frame
+#                 error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+#                 cv2.putText(error_frame, f"Error: {str(e)[:30]}", (50, 240), 
+#                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+#                 _, buffer = cv2.imencode('.jpg', error_frame)
+#                 yield (b'--frame\r\n'
+#                        b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+#                 time.sleep(1)
+        
+#         # Send final error frame if max retries reached
+#         final_error_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+#         cv2.putText(final_error_frame, "Max retries reached", (180, 240), 
+#                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+#         _, buffer = cv2.imencode('.jpg', final_error_frame)
+#         yield (b'--frame\r\n'
+#                b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+    
+#     return Response(generate_with_restart_handling(),
+#                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/get_count')
 def get_count():

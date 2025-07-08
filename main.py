@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Script untuk menjalankan Flask app tanpa ngrok (karena menggunakan Cloudflare Tunnel)
+main.py — Jalankan Flask app & Cloudflare Tunnel secara bersamaan
 """
 
 import subprocess
 import sys
 import os
 import threading
+import time
 
 def install_requirements():
     """Install dependencies dari requirements.txt"""
@@ -15,6 +16,16 @@ def install_requirements():
         print("✅ Requirements installed successfully")
     except subprocess.CalledProcessError as e:
         print(f"❌ Error installing requirements: {e}")
+        sys.exit(1)
+
+def run_cloudflared():
+    """Jalankan Cloudflare Tunnel"""
+    try:
+        print("🌩️ Starting Cloudflare Tunnel...")
+        subprocess.Popen(["cloudflared", "tunnel", "run", "smartroom"])
+        time.sleep(5)  # Beri waktu 5 detik biar tunnel siap
+    except Exception as e:
+        print(f"❌ Error starting Cloudflare Tunnel: {e}")
         sys.exit(1)
 
 def run_flask_app():
@@ -29,7 +40,7 @@ def run_flask_app():
         print("\n🛑 Flask app stopped by user")
 
 def main():
-    print("🏠 Smart Room Person Counter - Cloudflare Tunnel Setup")
+    print("🏠 Smart Room Person Counter - Launcher")
     print("=" * 50)
 
     print("📦 Installing requirements...")
@@ -37,17 +48,10 @@ def main():
 
     os.makedirs("templates", exist_ok=True)
 
-    print("\n🎯 Setup complete!")
-    print("🌐 Make sure your Cloudflare Tunnel is running (e.g. using `cloudflared tunnel run <tunnel-name>`)")
-    
-    choice = input("\nDo you want to run the Flask app now? (y/n): ").lower()
-    
-    if choice == 'y':
-        print("\n🚀 Starting Flask app...")
-        flask_thread = threading.Thread(target=run_flask_app)
-        flask_thread.daemon = True
-        flask_thread.start()
-        flask_thread.join()
+    run_cloudflared()
+
+    print("🚀 Running Flask App...")
+    run_flask_app()
 
     print("\n✅ Flask app exited.")
 

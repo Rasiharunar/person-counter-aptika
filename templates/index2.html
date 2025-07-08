@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Room - Person Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/><circle cx="20" cy="20" r="1" fill="white" opacity="0.1"/><circle cx="80" cy="30" r="1.5" fill="white" opacity="0.1"/><circle cx="30" cy="80" r="1" fill="white" opacity="0.1"/><circle cx="70" cy="70" r="1.5" fill="white" opacity="0.1"/></svg>');
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .video-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        #video-feed {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            backdrop-filter: blur(5px);
+        }
+
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .status-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .count-display {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .count-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #e74c3c);
+            color: white;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8, #3498db);
+            color: white;
+            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.3);
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: blink 1.5s infinite;
+        }
+
+        .status-online {
+            background: #28a745;
+        }
+
+        .status-offline {
+            background: #dc3545;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .recordings-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .recordings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .recordings-header h3 {
+            color: #333;
+            font-size: 1.4em;
+        }
+
+        .recordings-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .recording-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .recording-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .recording-item:last-child {
+            border-bottom: none;
+        }
+
+        .recording-info {
+            flex: 1;
+        }
+
+        .recording-event {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .recording-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .recording-count {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .message {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .message.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .count-display {
+                font-size: 2.5em;
+            }
+        }
+
+        .footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 Smart Room Detection</h1>
+            <p>Real-time person detection using YOLO AI technology</p>
+        </div>
+
+        <div class="main-content">
+            <div class="video-section">
+                <h2>📹 Live Camera Feed</h2>
+                <div class="video-container">
+                    <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Video Feed">
+                    <div class="video-overlay">
+                        <span class="status-indicator status-offline" id="camera-indicator"></span>
+                        <span id="camera-status">Camera Offline</span>
+                    </div>
+                </div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Processing camera...</p>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div class="status-display">
+                    <div class="count-display" id="person-count">0</div>
+                    <div class="count-label">People Detected</div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" id="start-camera">
+                        🎥 Start Camera
+                    </button>
+                    <button class="btn btn-danger" id="stop-camera" disabled>
+                        ⏹️ Stop Camera
+                    </button>
+                    <button class="btn btn-info" id="save-frame" disabled>
+                        📸 Save Frame
+                    </button>
+                </div>
+
+                <div class="input-group">
+                    <label for="event-name">Event Name:</label>
+                    <input type="text" id="event-name" placeholder="Enter event name...">
+                </div>
+
+                <button class="btn btn-info" id="record-data">
+                    💾 Record Data
+                </button>
+                <a href="/export_csv" class="btn btn-primary">Export CSV</a>
+                <a href="/export_pdf" class="btn btn-danger">Export PDF</a>
+                <div id="message-container"></div>
+            </div>
+        </div>
+
+        <div class="recordings-section">
+            <div class="recordings-header">
+                <h3>📊 Recent Recordings</h3>
+                <button class="btn btn-info" id="refresh-recordings" style="padding: 8px 16px; font-size: 0.9em;">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div class="recordings-list" id="recordings-list">
+                <div class="recording-item">
+                    <div class="recording-info">
+                        <div class="recording-event">No recordings yet</div>
+                        <div class="recording-details">Start recording to see data here</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 Smart Room Detection System | Powered by <a href="#">YOLO AI</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let cameraActive = false;
+        let personCount = 0;
+        let updateInterval;
+
+        // DOM elements
+        const startCameraBtn = document.getElementById( 'start-camera' );
+        const stopCameraBtn = document.getElementById( 'stop-camera' );
+        const saveFrameBtn = document.getElementById( 'save-frame' );
+        const recordDataBtn = document.getElementById( 'record-data' );
+        const refreshRecordingsBtn = document.getElementById( 'refresh-recordings' );
+        const personCountDisplay = document.getElementById( 'person-count' );
+        const cameraIndicator = document.getElementById( 'camera-indicator' );
+        const cameraStatus = document.getElementById( 'camera-status' );
+        const eventNameInput = document.getElementById( 'event-name' );
+        const messageContainer = document.getElementById( 'message-container' );
+        const recordingsList = document.getElementById( 'recordings-list' );
+        const loading = document.getElementById( 'loading' );
+
+        // Utility functions
+        function showMessage( message, type = 'success' ) {
+            const messageElement = document.createElement( 'div' );
+            messageElement.className = `message ${type}`;
+            messageElement.textContent = message;
+
+            messageContainer.appendChild( messageElement );
+
+            // Trigger animation
+            setTimeout( () => {
+                messageElement.classList.add( 'show' );
+            }, 100 );
+
+            // Remove message after 5 seconds
+            setTimeout( () => {
+                messageElement.classList.remove( 'show' );
+                setTimeout( () => {
+                    if ( messageElement.parentNode ) {
+                        messageElement.parentNode.removeChild( messageElement );
+                    }
+                }, 300 );
+            }, 5000 );
+        }
+
+        function showLoading( show = true ) {
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        function updateCameraStatus( active ) {
+            cameraActive = active;
+
+            if ( active ) {
+                cameraIndicator.className = 'status-indicator status-online';
+                cameraStatus.textContent = 'Camera Online';
+                startCameraBtn.disabled = true;
+                stopCameraBtn.disabled = false;
+                saveFrameBtn.disabled = false;
+            } else {
+                cameraIndicator.className = 'status-indicator status-offline';
+                cameraStatus.textContent = 'Camera Offline';
+                startCameraBtn.disabled = false;
+                stopCameraBtn.disabled = true;
+                saveFrameBtn.disabled = true;
+            }
+        }
+
+        function updatePersonCount() {
+            if ( !cameraActive ) return;
+
+            fetch( '/get_count' )
+                .then( response => response.json() )
+                .then( data => {
+                    personCount = data.count;
+                    personCountDisplay.textContent = personCount;
+                } )
+                .catch( error => {
+                    console.error( 'Error fetching count:', error );
+                } );
+        }
+
+        function loadRecordings() {
+            fetch( '/get_recordings?limit=10' )
+                .then( response => response.json() )
+                .then( data => {
+                    if ( data.status === 'success' ) {
+                        displayRecordings( data.data );
+                    } else {
+                        showMessage( 'Error loading recordings: ' + data.message, 'error' );
+                    }
+                } )
+                .catch( error => {
+                    console.error( 'Error loading recordings:', error );
+                    showMessage( 'Error loading recordings', 'error' );
+                } );
+        }
+
+        function displayRecordings( recordings ) {
+            if ( recordings.length === 0 ) {
+                recordingsList.innerHTML = `
+                    <div class="recording-item">
+                        <div class="recording-info">
+                            <div class="recording-event">No recordings yet</div>
+                            <div class="recording-details">Start recording to see data here</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            recordingsList.innerHTML = recordings.map( recording => `
+                <div class="recording-item">
+                    <div class="recording-info">
+                        <div class="recording-event">${recording.event_name}</div>
+                        <div class="recording-details">
+                            📅 ${new Date(recording.timestamp).toLocaleString()}
+                        </div>
+                    </div>
+                    <div class="recording-count">
+                        ${recording.person_count} ${recording.person_count === 1 ? 'person' : 'people'}
+                    </div>
+                </div>
+            ` ).join( '' );
+        }
+
+        // Event listeners
+        startCameraBtn.addEventListener( 'click', () => {
+            showLoading( true );
+
+            fetch( '/start_camera', {
+                    method: 'POST'
+                } )
+                .then( response => response.json() )
+                .then( data => {
+                    showLoading( false );
+
+                    if ( data.status === 'success' ) {
+                        showMessage( 'Camera started successfully!' );
+                        updateCameraStatus( true );
+
+                        // Start updating person count
+                        updateInterval = setInterval( updatePersonCount, 1000 );
+                    } else {
+                        showMessage( 'Error starting camera: ' + data.message, 'error' );
+                    }
+                } )
+                .catch( error => {
+                    showLoading( false );
+                    console.error( 'Error starting camera:', error );
+                    showMessage( 'Error starting camera', 'error' );
+                } );
+        } );
+
+        stopCameraBtn.addEventListener( 'click', () => {
+            showLoading( true );
+
+            fetch( '/stop_camera', {
+                    method: 'POST'
+                } )
+                .then( response => response.json() )
+                .then( data => {
+                    showLoading( false );
+
+                    if ( data.status === 'success' ) {
+                        showMessage( 'Camera stopped successfully!' );
+                        updateCameraStatus( false );
+
+                        // Stop updating person count
+                        if ( updateInterval ) {
+                            clearInterval( updateInterval );
+                        }
+
+                        // Reset count display
+                        personCountDisplay.textContent = '0';
+                    } else {
+                        showMessage( 'Error stopping camera: ' + data.message, 'error' );
+                    }
+                } )
+                .catch( error => {
+                    showLoading( false );
+                    console.error( 'Error stopping camera:', error );
+                    showMessage( 'Error stopping camera', 'error' );
+                } );
+        } );
+
+        saveFrameBtn.addEventListener( 'click', () => {
+            showLoading( true );
+
+            fetch( '/save_frame', {
+                    method: 'POST'
+                } )
+                .then( response => response.json() )
+                .then( data => {
+                    showLoading( false );
+
+                    if ( data.status === 'success' ) {
+                        showMessage(
+                            `Frame saved! ${data.person_count} people detected at ${data.timestamp}` );
+                    } else {
+                        showMessage( 'Error saving frame: ' + data.message, 'error' );
+                    }
+                } )
+                .catch( error => {
+                    showLoading( false );
+                    console.error( 'Error saving frame:', error );
+                    showMessage( 'Error saving frame', 'error' );
+                } );
+        } );
+
+        recordDataBtn.addEventListener( 'click', () => {
+            const eventName = eventNameInput.value.trim();
+
+            if ( !eventName ) {
+                showMessage( 'Please enter an event name', 'error' );
+                eventNameInput.focus();
+                return;
+            }
+
+            showLoading( true );
+
+            fetch( `/record_data?event_name=${encodeURIComponent(eventName)}` )
+                .then( response => response.json() )
+                .then( data => {
+                    showLoading( false );
+
+                    if ( data.status === 'success' ) {
+                        showMessage(
+                            `Data recorded! Event: ${data.data.event_name}, People: ${data.data.person_count}`
+                        );
+                        eventNameInput.value = '';
+                        loadRecordings(); // Refresh recordings list
+                    } else {
+                        showMessage( 'Error recording data: ' + data.message, 'error' );
+                    }
+                } )
+                .catch( error => {
+                    showLoading( false );
+                    console.error( 'Error recording data:', error );
+                    showMessage( 'Error recording data', 'error' );
+                } );
+        } );
+
+        refreshRecordingsBtn.addEventListener( 'click', () => {
+            loadRecordings();
+            showMessage( 'Recordings refreshed!' );
+        } );
+
+        // Initialize on page load
+        document.addEventListener( 'DOMContentLoaded', () => {
+            console.log( 'Smart Room Detection System initialized' );
+            loadRecordings();
+
+            // Check initial camera status
+            fetch( '/get_stream_status' )
+                .then( response => response.json() )
+                .then( data => {
+                    updateCameraStatus( data.camera_active );
+                    if ( data.camera_active ) {
+                        updateInterval = setInterval( updatePersonCount, 1000 );
+                    }
+                } )
+                .catch( error => {
+                    console.error( 'Error checking camera status:', error );
+                } );
+        } );
+
+        // Handle page visibility change
+        document.addEventListener( 'visibilitychange', () => {
+            if ( document.hidden ) {
+                // Page is hidden, stop updates
+                if ( updateInterval ) {
+                    clearInterval( updateInterval );
+                }
+            } else {
+                // Page is visible, resume updates if camera is active
+                if ( cameraActive ) {
+                    updateInterval = setInterval( updatePersonCount, 1000 );
+                }
+            }
+        } );
+
+        // Handle beforeunload event
+        window.addEventListener( 'beforeunload', () => {
+            if ( updateInterval ) {
+                clearInterval( updateInterval );
+            }
+        } );
+    </script>
+</body>
+
+</html>
