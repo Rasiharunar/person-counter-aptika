@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Smart Room</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', Arial, sans-serif;
+            background: #fff; 
+        }
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 40px 0 40px;
+            gap: 20px;
+        }
+        .header-bar img,
+        .header-bar .logo-right {
+            height: 60px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 2px 8px #6366f133);
+        }
+        .header-bar img:hover,
+        .header-bar .logo-right:hover {
+        }
+        .header-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            text-align: center;
+            flex: 1;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            letter-spacing: 1px;
+            color: #22223b;
+            text-shadow: 0 2px 8px #a5b4fc33;
+        }
+        .divider {
+            border: none;
+            border-top: 2px solid #222;
+            margin: 0 20px 40px 20px;
+        }
+        .login-container {
+            max-width: 420px;
+            margin: 60px auto 0 auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px #6366f133, 0 1.5px 8px #6366f122;
+            padding: 40px 32px 32px 32px;
+            animation: fadeIn 1s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(40px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .login-title {
+            text-align: center;
+            font-size: 2.3rem;
+            font-weight: 700;
+            margin-bottom: 32px;
+            color: #3730a3;
+            letter-spacing: 1px;
+        }
+        .login-form label {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 7px;
+            display: block;
+            color: #3730a3;
+        }
+        .input-group {
+            margin-bottom: 22px;
+        }
+        .login-input {
+            width: 100%;
+            padding: 16px 18px;
+            border: none;
+            border-radius: 18px;
+            background: #e0e7ff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3730a3;
+            margin-top: 7px;
+            outline: none;
+            box-sizing: border-box;
+            transition: box-shadow 0.2s, background 0.2s;
+            box-shadow: 0 1px 4px #6366f122;
+        }
+        .login-input:focus {
+            box-shadow: 0 0 0 2px #6366f1;
+            background: #fff;
+            color: #222;
+        }
+        .password-group {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .password-group > div {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .login-input[type="password"], 
+        #password.login-input {
+            flex: 1;
+            margin: 0;
+            padding-right: 44px;
+            box-sizing: border-box;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #3b82f6;
+            font-size: 1.2rem;
+            padding: 0;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .toggle-password:hover {
+            color: #2563eb;
+        }
+        .forgot-link {
+            display: block;
+            text-align: right;
+            margin-top: 6px;
+            margin-bottom: 18px;
+            color: #818cf8;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+        .forgot-link:hover {
+            color: #6366f1;
+            text-decoration: underline;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 16px 0;
+            background: linear-gradient(90deg, #2563eb 60%, #6366f1 100%);
+            color: #fff;
+            border: none;
+            border-radius: 18px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px #6366f122;
+        }
+        .login-btn:hover {
+            background: linear-gradient(90deg, #3730a3 60%, #6366f1 100%);
+            box-shadow: 0 4px 16px #6366f144;
+        }
+        /* Animasi icon */
+        .toggle-password:active i,
+        .toggle-password:focus i {
+            animation: eyePop 0.3s;
+        }
+        @keyframes eyePop {
+            0% { transform: scale(1);}
+            50% { transform: scale(1.3);}
+            100% { transform: scale(1);}
+        }
+        @media (max-width: 600px) {
+            .header-bar, .login-container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .header-title {
+                font-size: 1.3rem;
+            }
+            .login-container {
+                padding: 24px 8px 18px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <img src="/static/image/kominfo.png" alt="Logo Kiri">
+        <div class="header-title">Smart Room</div>
+        <img src="/static/image/Lambang_Kabupaten_Banyumas.png" alt="Logo Kanan" class="logo-right">
+    </div>
+    <hr class="divider">
+    <div class="login-container">
+        <div class="login-title">Login</div>
+        <form class="login-form" method="post">
+            <div class="input-group">
+                <label for="email">EMAIL</label>
+                <input type="email" id="email" class="login-input" placeholder="Masukkan Email Anda" required>
+            </div>
+            <div class="input-group password-group">
+                <label for="password">Password</label>
+                <div>
+                    <input type="password" id="password" class="login-input" placeholder="Enter Password" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword()" tabindex="-1" aria-label="Show Password">
+                        <i class="fa fa-eye" id="eye-icon"></i>
+                    </button>
+                </div>
+            </div>
+            <a href="#" class="forgot-link">Forgot Password?</a>
+            <button type="submit" class="login-btn">Login</button>
+        </form>
+    </div>
+    <script>
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>
