@@ -62,7 +62,7 @@
               <button class="record-btn">
                 <i class="fa fa-circle"></i> Record
               </button>
-              <span class="person-count"><i class="fa fa-users"></i> 5</span>
+              <span class="person-count" id="person-count"><i class="fa fa-users"></i> <span id="person-count-value">0</span></span>
             </div>
             <div class="video-container">
               <img
@@ -128,6 +128,17 @@
             updateVideoUI();
           });
       }, 3000);
+
+      // Update person count setiap 1 detik
+      function updatePersonCount() {
+        fetch('/api/person_count')
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById('person-count-value').textContent = data.person_count;
+          });
+      }
+      setInterval(updatePersonCount, 1000);
+      updatePersonCount();
 
       // Inisialisasi UI saat load
       updateVideoUI();

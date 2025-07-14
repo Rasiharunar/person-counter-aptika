@@ -104,7 +104,7 @@ def gen_frames():
                 person_boxes = []
                 if results.boxes is not None:
                     for box in results.boxes:
-                        if int(box.cls[0]) == 0:  # Person class
+                        if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.5:  # hanya box dengan confidence > 0.5
                             person_boxes.append(box)
                 person_count = len(person_boxes)
                 # Draw bounding boxes
