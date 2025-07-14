@@ -32,9 +32,9 @@ def get_records():
 
 @app.route('/api/record', methods=['POST'])
 def add_record():
+    global person_count
     data = request.get_json()
     event_name = data.get('event_name', '').strip()
-    person_count = data.get('person_count', 0)
     snapshot_url = data.get('snapshot_url', '')
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if not event_name:
@@ -43,7 +43,7 @@ def add_record():
     record = {
         'id': new_id,
         'event_name': event_name,
-        'person_count': person_count,
+        'person_count': person_count,  # ambil dari deteksi kamera
         'timestamp': timestamp,
         'snapshot_url': snapshot_url
     }
