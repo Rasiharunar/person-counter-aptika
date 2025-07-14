@@ -64,12 +64,16 @@ def delete_all_records():
 
 
 # --- Tambahan untuk video streaming ---
+
 import cv2
 from threading import Lock
 import time
+import numpy as np
+from ultralytics import YOLO
 
 camera_lock = Lock()
 camera = None
+person_count = 0
 
 def get_camera():
     global camera
@@ -78,7 +82,12 @@ def get_camera():
             camera = cv2.VideoCapture(0)
         return camera
 
+# Load YOLOv8 model (pastikan path dan model sudah ada)
+model = YOLO("yolo-weights/yolo11n.pt")
+
 def gen_frames():
+    global person_count
+    frame_count = 0
     while True:
         cam = get_camera()
         if not cam or not cam.isOpened():
@@ -87,10 +96,37 @@ def gen_frames():
         success, frame = cam.read()
         if not success:
             continue
-        ret, buffer = cv2.imencode('.jpg', frame)
+        resized_frame = cv2.resize(frame, (640, 480))
+        # Deteksi orang setiap 2 frame untuk efisiensi
+        if frame_count % 1 == 0:
+            try:
+                results = model(resized_frame, verbose=False)[0]
+                person_boxes = []
+                if results.boxes is not None:
+                    for box in results.boxes:
+                        if int(box.cls[0]) == 0:  # Person class
+                            person_boxes.append(box)
+                person_count = len(person_boxes)
+                # Draw bounding boxes
+                for box in person_boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    cv2.rectangle(resized_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(resized_frame, 'Person', (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            except Exception as e:
+                print(f"YOLO error: {e}")
+        else:
+            # Untuk frame non-detect, tetap gambar bounding box dari deteksi terakhir jika ingin
+            pass
+        frame_count += 1
+        ret, buffer = cv2.imencode('.jpg', resized_frame)
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+@app.route('/api/person_count')
+def api_person_count():
+    global person_count
+    return jsonify({'person_count': person_count})
 
 @app.route('/video_feed')
 def video_feed():
