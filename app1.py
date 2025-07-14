@@ -74,10 +74,16 @@ from ultralytics import YOLO
 camera_lock = Lock()
 camera = None
 person_count = 0
+camera_enabled = False
 
 def get_camera():
-    global camera
+    global camera, camera_enabled
     with camera_lock:
+        if not camera_enabled:
+            if camera:
+                camera.release()
+                camera = None
+            return None
         if camera is None or not camera.isOpened():
             camera = cv2.VideoCapture(0)
         return camera
@@ -91,7 +97,15 @@ def gen_frames():
     while True:
         cam = get_camera()
         if not cam or not cam.isOpened():
-            time.sleep(1)
+            # Kamera mati, kirim frame placeholder
+            placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(placeholder, "Camera Not Active", (120, 240),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+            ret, buffer = cv2.imencode('.jpg', placeholder)
+            frame_bytes = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            time.sleep(0.03)
             continue
         success, frame = cam.read()
         if not success:
@@ -134,6 +148,8 @@ def video_feed():
 
 @app.route('/start_camera', methods=['POST'])
 def start_camera():
+    global camera_enabled
+    camera_enabled = True
     cam = get_camera()
     if cam and cam.isOpened():
         return jsonify({'status': 'success', 'message': 'Camera started'})
@@ -142,7 +158,8 @@ def start_camera():
 
 @app.route('/stop_camera', methods=['POST'])
 def stop_camera():
-    global camera
+    global camera, camera_enabled
+    camera_enabled = False
     with camera_lock:
         if camera:
             camera.release()
