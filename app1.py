@@ -1,8 +1,55 @@
+
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 app = Flask(__name__)
+
+# --- Konfigurasi koneksi PostgreSQL ---
+DB_HOST = os.environ.get('DB_HOST', 'localhost')
+DB_NAME = os.environ.get('DB_NAME', 'person_counter')
+DB_USER = os.environ.get('DB_USER', 'postgres')
+DB_PASS = os.environ.get('DB_PASS', 'Passpostgre1')
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS
+    )
+    return conn
+
+# Helper untuk insert record ke DB
+def insert_record(event_name, person_count, timestamp, snapshot_url):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO records (event_name, person_count, timestamp, snapshot_url)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id;
+        """,
+        (event_name, person_count, timestamp, snapshot_url)
+    )
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return new_id
+
+# Helper untuk ambil semua record dari DB
+def get_all_records():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM records ORDER BY id ASC;")
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+    return records
 
 # Dummy data for demonstration (replace with database or real data in production)
 RECORDS = [
@@ -28,27 +75,47 @@ def dashboard():
 
 @app.route('/api/records', methods=['GET'])
 def get_records():
-    return jsonify({'status': 'success', 'records': RECORDS})
+    try:
+        records = get_all_records()
+        return jsonify({'status': 'success', 'records': records})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/record', methods=['POST'])
 def add_record():
     global person_count
     data = request.get_json()
     event_name = data.get('event_name', '').strip()
-    snapshot_url = data.get('snapshot_url', '')
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if not event_name:
         return jsonify({'status': 'error', 'message': 'Event name is required'}), 400
-    new_id = max([r['id'] for r in RECORDS], default=0) + 1
-    record = {
-        'id': new_id,
-        'event_name': event_name,
-        'person_count': person_count,  # ambil dari deteksi kamera
-        'timestamp': timestamp,
-        'snapshot_url': snapshot_url
-    }
-    RECORDS.append(record)
-    return jsonify({'status': 'success', 'record': record})
+
+    # Ambil screenshot dari kamera
+    cam = get_camera()
+    if not cam or not cam.isOpened():
+        return jsonify({'status': 'error', 'message': 'Camera not active'}), 500
+    success, frame = cam.read()
+    if not success:
+        return jsonify({'status': 'error', 'message': 'Failed to capture image'}), 500
+
+    # Simpan screenshot ke static/image/snapshot_<timestamp>.jpg
+    filename = f"snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    save_path = os.path.join('static', 'image', filename)
+    cv2.imwrite(save_path, frame)
+    snapshot_url = f"/static/image/{filename}"
+
+    try:
+        new_id = insert_record(event_name, person_count, timestamp, snapshot_url)
+        record = {
+            'id': new_id,
+            'event_name': event_name,
+            'person_count': person_count,
+            'timestamp': timestamp,
+            'snapshot_url': snapshot_url
+        }
+        return jsonify({'status': 'success', 'record': record})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/record/<int:record_id>', methods=['DELETE'])
 def delete_record(record_id):
