@@ -45,59 +45,105 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>1</td>
-                      <td>Rondo Joget</td>
-                      <td>5</td>
-                      <td>03:24:56</td>
-                      <td><span class="snapshot-link">Snapshot</span></td>
-                      <td><button class="btn-delete">Delete</button></td>
-                    </tr>
-                    <tr>
-                      <td>2</td>
-                      <td>Supersemar</td>
-                      <td>7</td>
-                      <td>07:45:07</td>
-                      <td><span class="snapshot-link">Snapshot</span></td>
-                      <td><button class="btn-delete">Delete</button></td>
-                    </tr>
-                    <!-- Tambahkan baris lain di sini -->
+                    <!-- Data akan diisi oleh JavaScript -->
+                  </tbody>
                   </tbody>
                 </table>
               </div>
 
               <div class="card-footer">
-                <button class="btn-remove-all">Remove All</button>
+                <button class="btn-remove-all" onclick="removeAllRecords()">Remove All</button>
               </div>
             </div>
           </div>
           <div class="right-panel">
-            <div class="header-right">
-              <span class="timer" id="timer">01:20:45</span>
-              <button class="record-btn">
-                <i class="fa fa-circle"></i> Record
-              </button>
-              <span class="person-count"><i class="fa fa-users"></i> 5</span>
+            <div class="header-right" style="display: flex; align-items: center; justify-content: center; gap: 20px;">
+              <span class="person-count" id="person-count" style="font-size: 1.5em;"><i class="fa fa-users"></i> <span id="person-count-value">0</span></span>
             </div>
             <div class="video-container">
               <img
-                src="https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=400&h=260"
-                alt="Video"
+                id="video-feed"
+                src=""
+                alt="Video feed"
                 class="video-feed"
+                style="display:none; max-width:100%; border-radius:10px;"
               />
+              <div id="video-status" style="color:#f44336; text-align:center; margin-top:8px; display:none;">Camera is OFF</div>
             </div>
             <div class="video-controls">
               <button class="btn-start" onclick="startCamera()">
-                <img src="\static\image\camera.png" alt="Start" />
+                <img src="/static/image/camera.png" alt="Start" />
               </button>
               <button class="btn-stop" onclick="stopCamera()">
-                <img src="\static\image\camera-slash.png" alt="Stop" />
+                <img src="/static/image/camera-slash.png" alt="Stop" />
               </button>
+    <script>
+      let cameraActive = false;
+
+      function updateVideoUI() {
+        const videoFeed = document.getElementById('video-feed');
+        const videoStatus = document.getElementById('video-status');
+        if (cameraActive) {
+          videoFeed.src = '/video_feed?' + new Date().getTime();
+          videoFeed.style.display = 'block';
+          videoStatus.style.display = 'none';
+        } else {
+          videoFeed.src = '';
+          videoFeed.style.display = 'none';
+          videoStatus.style.display = 'block';
+        }
+      }
+
+      function startCamera() {
+        fetch('/start_camera', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            cameraActive = data.status === 'success';
+            updateVideoUI();
+          });
+      }
+
+      function stopCamera() {
+        fetch('/stop_camera', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            cameraActive = false;
+            updateVideoUI();
+          });
+      }
+
+      // Cek status kamera setiap 3 detik (opsional, bisa diimprove dengan endpoint status)
+      setInterval(() => {
+        fetch('/video_feed', { method: 'HEAD' })
+          .then(res => {
+            cameraActive = res.status === 200;
+            updateVideoUI();
+          })
+          .catch(() => {
+            cameraActive = false;
+            updateVideoUI();
+          });
+      }, 3000);
+
+      // Update person count setiap 1 detik
+      function updatePersonCount() {
+        fetch('/api/person_count')
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById('person-count-value').textContent = data.person_count;
+          });
+      }
+      setInterval(updatePersonCount, 1000);
+      updatePersonCount();
+
+      // Inisialisasi UI saat load
+      updateVideoUI();
+    </script>
             </div>
             <div class="record-event">
               <label class="card-header"><b>Record Event</b></label>
               <input type="text" id="event-input" placeholder="" />
-              <button class="record-data-btn">
+              <button class="record-data-btn" onclick="recordData()">
                 <i class="fa fa-database"></i> Record Data
               </button>
             </div>
@@ -105,5 +151,80 @@
         </div>
       </div>
     </div>
+    <script>
+      function fetchRecords() {
+        fetch('/api/records')
+          .then(res => res.json())
+          .then(data => {
+            const tbody = document.querySelector('.table-wrapper tbody');
+            tbody.innerHTML = '';
+            if (data.records && data.records.length > 0) {
+              data.records.forEach((rec, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                  <td>${idx + 1}</td>
+                  <td>${rec.event_name}</td>
+                  <td>${rec.person_count}</td>
+                  <td>${rec.timestamp}</td>
+                  <td><span class="snapshot-link" onclick="showSnapshot('${rec.snapshot_url}')">Snapshot</span></td>
+                  <td><button class="btn-delete" onclick="deleteRecord(${rec.id})">Delete</button></td>
+                `;
+                tbody.appendChild(tr);
+              });
+            } else {
+              tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No records found</td></tr>';
+            }
+          });
+      }
+
+      function deleteRecord(id) {
+        if (!confirm('Delete this record?')) return;
+        fetch(`/api/record/${id}`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(() => fetchRecords());
+      }
+
+      function removeAllRecords() {
+        if (!confirm('Remove all records?')) return;
+        fetch('/api/records', { method: 'DELETE' })
+          .then(res => res.json())
+          .then(() => fetchRecords());
+      }
+
+      function recordData() {
+        const eventInput = document.getElementById('event-input');
+        const eventName = eventInput.value.trim();
+        if (!eventName) {
+          alert('Event name required!');
+          return;
+        }
+        // Dummy person_count and snapshot_url, ganti sesuai kebutuhan
+        fetch('/api/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_name: eventName,
+            person_count: 1,
+            snapshot_url: '/static/image/kominfo.png'
+          })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              eventInput.value = '';
+              fetchRecords();
+            } else {
+              alert(data.message || 'Failed to record');
+            }
+          });
+      }
+
+      function showSnapshot(url) {
+        window.open(url, '_blank');
+      }
+
+      // Fetch records on page load
+      fetchRecords();
+    </script>
   </body>
 </html>
