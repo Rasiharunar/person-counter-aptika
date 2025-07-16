@@ -1,12 +1,23 @@
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from datetime import datetime
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 
+
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')  # Ganti dengan secret key yang kuat di production
+
+# --- Konfigurasi akun login (hanya di backend, tidak di web) ---
+USERS = {
+    'admin': 'password123',  # Ganti sesuai kebutuhan
+    'user1': 'userpass1',
+    'user2': 'passwordku',
+    'kominfo': 'kominfo2025',
+    'banyumas': 'banyumas123'
+}
 
 # --- Konfigurasi koneksi PostgreSQL ---
 DB_HOST = os.environ.get('DB_HOST', 'localhost')
@@ -51,27 +62,42 @@ def get_all_records():
     conn.close()
     return records
 
-# Dummy data for demonstration (replace with database or real data in production)
-RECORDS = [
-    {
-        'id': 1,
-        'event_name': 'Rondo Joget',
-        'person_count': 5,
-        'timestamp': '2025-07-14 03:24:56',
-        'snapshot_url': '/static/image/snapshot1.jpg'
-    },
-    {
-        'id': 2,
-        'event_name': 'Supersemar',
-        'person_count': 7,
-        'timestamp': '2025-07-14 07:45:07',
-        'snapshot_url': '/static/image/snapshot2.jpg'
-    }
-]
 
+# --- Proteksi dashboard ---
 @app.route('/')
 def dashboard():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     return render_template('dashboard.html')
+
+# --- Login page ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        print(f"DEBUG LOGIN: username='{username}', password='{password}'")
+        # Cek akun di backend
+        if username in USERS:
+            print(f"DEBUG: Username ditemukan. Password backend='{USERS[username]}'")
+            if USERS[username] == password:
+                print("DEBUG: Password cocok. Login berhasil.")
+                session['logged_in'] = True
+                session['user'] = username
+                return redirect(url_for('dashboard'))
+            else:
+                print("DEBUG: Password tidak cocok.")
+                return render_template('login.html', error='Password salah untuk username tersebut.')
+        else:
+            print("DEBUG: Username tidak ditemukan.")
+            return render_template('login.html', error='Username tidak ditemukan.')
+    return render_template('login.html')
+
+# --- Logout ---
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/api/records', methods=['GET'])
 def get_records():
@@ -119,15 +145,29 @@ def add_record():
 
 @app.route('/api/record/<int:record_id>', methods=['DELETE'])
 def delete_record(record_id):
-    global RECORDS
-    RECORDS = [r for r in RECORDS if r['id'] != record_id]
-    return jsonify({'status': 'success', 'message': 'Record deleted'})
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM records WHERE id = %s;", (record_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'success', 'message': 'Record deleted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/records', methods=['DELETE'])
 def delete_all_records():
-    global RECORDS
-    RECORDS = []
-    return jsonify({'status': 'success', 'message': 'All records deleted'})
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM records;")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'status': 'success', 'message': 'All records deleted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 # --- Tambahan untuk video streaming ---
