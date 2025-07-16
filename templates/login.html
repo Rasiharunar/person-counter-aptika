@@ -25,14 +25,18 @@
     <hr class="divider" />
     <div class="login-container">
       <div class="login-title">Login</div>
+      {% if error %}
+        <div style="color: red; text-align: center; margin-bottom: 10px;">{{ error }}</div>
+      {% endif %}
       <form class="login-form" method="post">
         <div class="input-group">
-          <label for="email">EMAIL</label>
+          <label for="username">Username</label>
           <input
-            type="email"
-            id="email"
+            type="text"
+            id="username"
+            name="username"
             class="login-input"
-            placeholder="Masukkan Email Anda"
+            placeholder="Masukkan Username Anda"
             required
           />
         </div>
@@ -42,8 +46,9 @@
             <input
               type="password"
               id="password"
+              name="password"
               class="login-input"
-              placeholder="Enter Password"
+              placeholder="Masukkan Password"
               required
             />
             <button
