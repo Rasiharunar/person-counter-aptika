@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Smart Room Person Counter</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #ffffff;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 80px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            justify-content: space-between;
+        }
+
+        .logo {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-logout {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .content-row {
+            display: flex;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .left-panel {
+            flex: 2;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .card-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        .table-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .snapshot-link {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .snapshot-link:hover {
+            color: #0056b3;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+            transform: scale(1.05);
+        }
+
+        .btn-export {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 5px;
+        }
+
+        .btn-export:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+
+        .btn-remove-all {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-remove-all:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-export-all {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-export-all:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .header-right {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+
+        .person-count {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .video-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            text-align: center;
+            flex: 1;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .video-feed {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-controls {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-start,
+        .btn-stop {
+            background: #007bff;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-start:hover,
+        .btn-stop:hover {
+            background: #0056b3;
+            transform: scale(1.1);
+        }
+
+        .btn-stop {
+            background: #dc3545;
+        }
+
+        .btn-stop:hover {
+            background: #c82333;
+        }
+
+        .record-event {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 120px;
+        }
+
+        .record-event .card-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        #event-input {
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        #event-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .record-data-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .record-data-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        #video-status {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <img src="/static/image/kominfo.png" style="width: 45px; height: 45px" alt="Logo" class="logo" />
+            <button class="btn-logout" onclick="location.href='/logout'">
+                <img src="/static/image/logout.png" alt="Logout" style="width: 28px; height: 28px" />
+            </button>
+        </div>
+        <div class="main-content">
+            <div class="content-row">
+                <div class="left-panel">
+                    <div class="card">
+                        <div class="card-header">RECORD LIST</div>
+
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>No.</th>
+                                        <th>Event Name</th>
+                                        <th>Person</th>
+                                        <th>Timestamp</th>
+                                        <th>Snapshot</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data akan diisi oleh JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="card-footer">
+                            <button class="btn-export-all" onclick="exportAllRecords()">
+                                <i class="fas fa-file-pdf"></i> Export All PDF
+                            </button>
+                            <button class="btn-remove-all" onclick="removeAllRecords()">
+                                <i class="fas fa-trash"></i> Remove All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-panel">
+                    <div class="header-right"
+                        style="display: flex; align-items: center; justify-content: center; gap: 20px;">
+                        <span class="person-count" id="person-count" style="font-size: 1.5em;"><i
+                                class="fa fa-users"></i> <span id="person-count-value">0</span></span>
+                    </div>
+                    <div class="video-container">
+                        <img id="video-feed" src="" alt="Video feed" class="video-feed"
+                            style="display:none; max-width:100%; border-radius:8px;" />
+                        <div id="video-status" style="color:#dc3545; text-align:center; margin-top:8px; display:none;">
+                            Camera is OFF</div>
+                    </div>
+                    <div class="video-controls">
+                        <button class="btn-start" onclick="startCamera()">
+                            <img src="/static/image/camera.png" alt="Start" style="width: 24px; height: 24px;" />
+                        </button>
+                        <button class="btn-stop" onclick="stopCamera()">
+                            <img src="/static/image/camera-slash.png" alt="Stop" style="width: 24px; height: 24px;" />
+                        </button>
+                    </div>
+                    <div class="record-event">
+                        <label class="card-header"><b>Record Event</b></label>
+                        <input type="text" id="event-input" placeholder="Enter event name..." />
+                        <button class="record-data-btn" onclick="recordData()">
+                            <i class="fa fa-database"></i> Record Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cameraActive = false;
+
+        function updateVideoUI() {
+            const videoFeed = document.getElementById( 'video-feed' );
+            const videoStatus = document.getElementById( 'video-status' );
+            if ( cameraActive ) {
+                videoFeed.src = '/video_feed?' + new Date().getTime();
+                videoFeed.style.display = 'block';
+                videoStatus.style.display = 'none';
+            } else {
+                videoFeed.src = '';
+                videoFeed.style.display = 'none';
+                videoStatus.style.display = 'block';
+            }
+        }
+
+        function startCamera() {
+            fetch( '/start_camera', {
+                    method: 'POST'
+                } )
+                .then( res => res.json() )
+                .then( data => {
+                    cameraActive = data.status === 'success';
+                    updateVideoUI();
+                } );
+        }
+
+        function stopCamera() {
+            fetch( '/stop_camera', {
+                    method: 'POST'
+                } )
+                .then( res => res.json() )
+                .then( data => {
+                    cameraActive = false;
+                    updateVideoUI();
+                } );
+        }
+
+        // Cek status kamera setiap 3 detik
+        setInterval( () => {
+            fetch( '/video_feed', {
+                    method: 'HEAD'
+                } )
+                .then( res => {
+                    cameraActive = res.status === 200;
+                    updateVideoUI();
+                } )
+                .catch( () => {
+                    cameraActive = false;
+                    updateVideoUI();
+                } );
+        }, 3000 );
+
+        // Update person count setiap 1 detik
+        function updatePersonCount() {
+            fetch( '/api/person_count' )
+                .then( res => res.json() )
+                .then( data => {
+                    document.getElementById( 'person-count-value' ).textContent = data.person_count;
+                } );
+        }
+        setInterval( updatePersonCount, 1000 );
+        updatePersonCount();
+
+        // Inisialisasi UI saat load
+        updateVideoUI();
+
+        function fetchRecords() {
+            fetch( '/api/records' )
+                .then( res => res.json() )
+                .then( data => {
+                    const tbody = document.querySelector( '.table-wrapper tbody' );
+                    tbody.innerHTML = '';
+                    if ( data.records && data.records.length > 0 ) {
+                        data.records.forEach( ( rec, idx ) => {
+                            const tr = document.createElement( 'tr' );
+                            tr.innerHTML = `
+                  <td>${idx + 1}</td>
+                  <td>${rec.event_name}</td>
+                  <td>${rec.person_count}</td>
+                  <td>${rec.timestamp}</td>
+                  <td><span class="snapshot-link" onclick="showSnapshot('${rec.snapshot_url}')">Snapshot</span></td>
+                  <td>
+                    <button class="btn-export" onclick="exportSingleRecord(${rec.id})">
+                      <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn-delete" onclick="deleteRecord(${rec.id})">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                `;
+                            tbody.appendChild( tr );
+                        } );
+                    } else {
+                        tbody.innerHTML =
+                            '<tr><td colspan="6" style="text-align:center;">No records found</td></tr>';
+                    }
+                } );
+        }
+
+        function deleteRecord( id ) {
+            if ( !confirm( 'Delete this record?' ) ) return;
+            fetch( `/api/record/${id}`, {
+                    method: 'DELETE'
+                } )
+                .then( res => res.json() )
+                .then( () => fetchRecords() );
+        }
+
+        function removeAllRecords() {
+            if ( !confirm( 'Remove all records?' ) ) return;
+            fetch( '/api/records', {
+                    method: 'DELETE'
+                } )
+                .then( res => res.json() )
+                .then( () => fetchRecords() );
+        }
+
+        function exportSingleRecord( id ) {
+            window.open( `/export/record/${id}/pdf`, '_blank' );
+        }
+
+        function exportAllRecords() {
+            window.open( '/export/records/pdf', '_blank' );
+        }
+
+        function recordData() {
+            const eventInput = document.getElementById( 'event-input' );
+            const eventName = eventInput.value.trim();
+            if ( !eventName ) {
+                alert( 'Event name required!' );
+                return;
+            }
+
+            fetch( '/api/record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify( {
+                        event_name: eventName,
+                        person_count: 1,
+                        snapshot_url: '/static/snapshot/'
+                    } )
+                } )
+                .then( res => res.json() )
+                .then( data => {
+                    if ( data.status === 'success' ) {
+                        eventInput.value = '';
+                        fetchRecords();
+                    } else {
+                        alert( data.message || 'Failed to record' );
+                    }
+                } );
+        }
+
+        function showSnapshot( url ) {
+            window.open( url, '_blank' );
+        }
+
+        // Fetch records on page load
+        fetchRecords();
+    </script>
+</body>
+
+</html>

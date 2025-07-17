@@ -81,7 +81,7 @@ class CameraManager:
                         
                         for backend in backends:
                             with self.frame_lock:
-                                self.cap = cv2.VideoCapture(camera_index, backend)
+                                self.cap = cv2.VideoCapture(1, backend)
                                 
                                 if self.cap.isOpened():
                                     # Test capture

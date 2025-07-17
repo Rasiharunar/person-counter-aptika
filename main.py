@@ -18,10 +18,10 @@ def install_requirements():
 
 def run_flask():
     global flask_process
-    if not os.path.exists("app1.py"):
-        print("app1.py not found")
+    if not os.path.exists("app2.py"):
+        print("app2.py not found")
         return
-    flask_process = subprocess.Popen([sys.executable, "app1.py"])
+    flask_process = subprocess.Popen([sys.executable, "app2.py"])
 
 def cleanup():
     if flask_process:

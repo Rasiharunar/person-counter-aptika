@@ -1,18 +1,28 @@
-
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, make_response
 from datetime import datetime
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-
-
+import cv2
+from threading import Lock
+import time
+import numpy as np
+from ultralytics import YOLO
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import tempfile
+import io
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')  # Ganti dengan secret key yang kuat di production
+app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')
 
 # --- Konfigurasi akun login (hanya di backend, tidak di web) ---
 USERS = {
-    'admin': 'password123',  # Ganti sesuai kebutuhan
+    'admin': 'password123',
     'user1': 'userpass1',
     'user2': 'passwordku',
     'kominfo': 'kominfo2025',
@@ -64,13 +74,157 @@ def get_all_records():
     conn.close()
     return records
 
+# Helper untuk ambil record berdasarkan ID
+def get_record_by_id(record_id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM records WHERE id = %s;", (record_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+# Fungsi untuk generate PDF single record
+def generate_single_record_pdf(record):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    # Header
+    title = Paragraph("Smart Room Person Counter - Record Report", title_style)
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Record details
+    data = [
+        ['Record ID:', str(record['id'])],
+        ['Event Name:', record['event_name']],
+        ['Person Count:', str(record['person_count'])],
+        ['Timestamp:', record['timestamp']],
+    ]
+    
+    table = Table(data, colWidths=[2*inch, 3*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('BACKGROUND', (1, 0), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    story.append(table)
+    story.append(Spacer(1, 20))
+    
+    # Add snapshot if available
+    if record.get('snapshot_url'):
+        story.append(Paragraph("Snapshot:", styles['Heading2']))
+        story.append(Spacer(1, 10))
+        
+        try:
+            # Construct full path to snapshot
+            snapshot_path = record['snapshot_url'].lstrip('/')
+            full_path = os.path.join(app.root_path, snapshot_path)
+            
+            if os.path.exists(full_path):
+                img = Image(full_path, width=4*inch, height=3*inch)
+                story.append(img)
+            else:
+                story.append(Paragraph("Snapshot not found", styles['Normal']))
+        except Exception as e:
+            story.append(Paragraph(f"Error loading snapshot: {str(e)}", styles['Normal']))
+    
+    # Footer
+    story.append(Spacer(1, 30))
+    footer = Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal'])
+    story.append(footer)
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# Fungsi untuk generate PDF multiple records
+def generate_multiple_records_pdf(records):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    # Header
+    title = Paragraph("Smart Room Person Counter - All Records Report", title_style)
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Summary
+    summary = Paragraph(f"Total Records: {len(records)}", styles['Heading2'])
+    story.append(summary)
+    story.append(Spacer(1, 20))
+    
+    # Table headers
+    data = [['No.', 'Event Name', 'Person Count', 'Timestamp']]
+    
+    # Add records data
+    for idx, record in enumerate(records, 1):
+        data.append([
+            str(idx),
+            record['event_name'],
+            str(record['person_count']),
+            record['timestamp']
+        ])
+    
+    table = Table(data, colWidths=[0.5*inch, 2.5*inch, 1*inch, 2*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ]))
+    
+    story.append(table)
+    story.append(Spacer(1, 30))
+    
+    # Footer
+    footer = Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal'])
+    story.append(footer)
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 # --- Proteksi dashboard ---
 @app.route('/')
 def dashboard():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return render_template('dashboard.html')
+    return render_template('dashboard2.html')
 
 # --- Login page ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -79,7 +233,6 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         print(f"DEBUG LOGIN: username='{username}', password='{password}'")
-        # Cek akun di backend
         if username in USERS:
             print(f"DEBUG: Username ditemukan. Password backend='{USERS[username]}'")
             if USERS[username] == password:
@@ -111,7 +264,6 @@ def get_records():
 
 @app.route('/api/record', methods=['POST'])
 def add_record():
-    
     global person_count
     data = request.get_json()
     event_name = data.get('event_name', '').strip()
@@ -129,9 +281,9 @@ def add_record():
 
     # Simpan screenshot ke static/image/snapshot_<timestamp>.jpg
     filename = f"snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-    save_path = os.path.join('static', 'image', filename)
+    save_path = os.path.join('static', 'snapshots', filename)
     cv2.imwrite(save_path, frame)
-    snapshot_url = f"/static/image/{filename}"
+    snapshot_url = f"/static/snapshots/{filename}"
 
     try:
         new_id = insert_record(event_name, person_count, timestamp, snapshot_url)
@@ -172,15 +324,52 @@ def delete_all_records():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# --- PDF Export Routes ---
+@app.route('/export/record/<int:record_id>/pdf')
+def export_single_record_pdf(record_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    try:
+        record = get_record_by_id(record_id)
+        if not record:
+            return jsonify({'status': 'error', 'message': 'Record not found'}), 404
+        
+        pdf_buffer = generate_single_record_pdf(record)
+        filename = f"record_{record_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# --- Tambahan untuk video streaming ---
+@app.route('/export/records/pdf')
+def export_all_records_pdf():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    try:
+        records = get_all_records()
+        if not records:
+            return jsonify({'status': 'error', 'message': 'No records found'}), 404
+        
+        pdf_buffer = generate_multiple_records_pdf(records)
+        filename = f"all_records_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-import cv2
-from threading import Lock
-import time
-import numpy as np
-from ultralytics import YOLO
-
+# --- Camera variables ---
 camera_lock = Lock()
 camera = None
 person_count = 0
@@ -198,7 +387,7 @@ def get_camera():
             camera = cv2.VideoCapture(1, cv2.CAP_DSHOW)
         return camera
 
-# Load YOLOv8 model (pastikan path dan model sudah ada)
+# Load YOLOv8 model
 model = YOLO("yolo-weights/yolo11n.pt")
 
 def gen_frames():
@@ -207,7 +396,6 @@ def gen_frames():
     while True:
         cam = get_camera()
         if not cam or not cam.isOpened():
-            # Kamera mati, kirim frame placeholder
             placeholder = np.zeros((480, 640, 3), dtype=np.uint8)
             cv2.putText(placeholder, "Camera Not Active", (120, 240),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
@@ -221,17 +409,15 @@ def gen_frames():
         if not success:
             continue
         resized_frame = cv2.resize(frame, (640, 480))
-        # Deteksi orang setiap 2 frame untuk efisiensi
         if frame_count % 1 == 0:
             try:
                 results = model(resized_frame, verbose=False)[0]
                 person_boxes = []
                 if results.boxes is not None:
                     for box in results.boxes:
-                        if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.5:  # hanya box dengan confidence > 0.5
+                        if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.5:
                             person_boxes.append(box)
                 person_count = len(person_boxes)
-                # Draw bounding boxes
                 for box in person_boxes:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     cv2.rectangle(resized_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -239,14 +425,12 @@ def gen_frames():
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             except Exception as e:
                 print(f"YOLO error: {e}")
-        else:
-            # Untuk frame non-detect, tetap gambar bounding box dari deteksi terakhir jika ingin
-            pass
         frame_count += 1
         ret, buffer = cv2.imencode('.jpg', resized_frame)
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
 @app.route('/api/person_count')
 def api_person_count():
     global person_count
